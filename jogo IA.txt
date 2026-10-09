@@ -1,0 +1,1147 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Artur: O Caçador de Múmias</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none;
+        }
+
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #050302;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #f3e5ab;
+        }
+
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #000;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            background: #0d0805;
+        }
+
+        #hud {
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            right: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .hud-panel {
+            background: rgba(20, 12, 6, 0.85);
+            border: 2px solid #c8963e;
+            border-radius: 8px;
+            padding: 8px 14px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.8), inset 0 0 10px rgba(200, 150, 62, 0.2);
+            backdrop-filter: blur(4px);
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .bar-container {
+            width: 160px;
+            height: 14px;
+            background: #2a180b;
+            border: 1px solid #c8963e;
+            border-radius: 7px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .bar-fill {
+            height: 100%;
+            width: 100%;
+            transition: width 0.1s linear;
+        }
+
+        #hp-fill { background: linear-gradient(90deg, #990000, #ff3333); }
+        #torch-fill { background: linear-gradient(90deg, #cc6600, #ffaa00); }
+
+        .stat-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 0.85rem;
+            font-weight: bold;
+            color: #fce8c5;
+            text-shadow: 1px 1px 2px #000;
+        }
+
+        /* Minimap */
+        #minimap-card {
+            background: rgba(20, 12, 6, 0.85);
+            border: 2px solid #c8963e;
+            border-radius: 8px;
+            padding: 4px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.8);
+        }
+
+        #minimap {
+            width: 100px;
+            height: 100px;
+            border-radius: 4px;
+            background: #000;
+            display: block;
+        }
+
+        /* Touch Controls Layer */
+        #touch-controls {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            z-index: 20;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            padding: 20px;
+        }
+
+        .joystick-zone {
+            width: 140px;
+            height: 140px;
+            background: rgba(200, 150, 62, 0.15);
+            border: 2px solid rgba(200, 150, 62, 0.4);
+            border-radius: 50%;
+            position: relative;
+            pointer-events: auto;
+            touch-action: none;
+        }
+
+        .joystick-knob {
+            width: 50px;
+            height: 50px;
+            background: radial-gradient(circle, #f39c12, #8e5a1b);
+            border: 2px solid #fff;
+            border-radius: 50%;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 12px;
+            pointer-events: auto;
+        }
+
+        .touch-btn {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: radial-gradient(circle, #5c3a19, #221408);
+            border: 2px solid #c8963e;
+            color: #fff;
+            font-size: 1.2rem;
+            font-weight: bold;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.6);
+            touch-action: none;
+        }
+
+        .touch-btn:active {
+            transform: scale(0.92);
+            background: #f39c12;
+        }
+
+        /* Modals Screen */
+        .screen-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(8, 4, 2, 0.92);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 30;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .screen-overlay h1 {
+            font-size: 2.5rem;
+            color: #f39c12;
+            text-shadow: 0 0 15px rgba(243, 156, 18, 0.6);
+            margin-bottom: 12px;
+            font-family: 'Georgia', serif;
+        }
+
+        .screen-overlay p {
+            max-width: 500px;
+            line-height: 1.6;
+            margin-bottom: 20px;
+            color: #d1b894;
+        }
+
+        .btn-main {
+            background: linear-gradient(180deg, #f39c12, #b7791f);
+            color: #1a0f05;
+            border: 2px solid #ffe89c;
+            padding: 12px 36px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            border-radius: 30px;
+            cursor: pointer;
+            box-shadow: 0 0 20px rgba(243, 156, 18, 0.5);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .btn-main:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 30px rgba(243, 156, 18, 0.8);
+        }
+
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <canvas id="canvas"></canvas>
+
+    <!-- HUD Overlay -->
+    <div id="hud">
+        <div class="hud-panel">
+            <div class="stat-row">
+                <span>❤️ VIDA</span>
+                <div class="bar-container"><div id="hp-fill" class="bar-fill"></div></div>
+            </div>
+            <div class="stat-row">
+                <span>🔥 TOCHA</span>
+                <div class="bar-container"><div id="torch-fill" class="bar-fill"></div></div>
+            </div>
+            <div class="stat-row" style="margin-top: 4px;">
+                <span>💰 <span id="gold-txt">0</span></span>
+                <span>🔫 <span id="ammo-txt">12</span></span>
+                <span>🧪 <span id="potion-txt">2</span></span>
+            </div>
+        </div>
+
+        <div id="minimap-card">
+            <canvas id="minimap" width="100" height="100"></canvas>
+        </div>
+    </div>
+
+    <!-- Mobile Touch Controls -->
+    <div id="touch-controls">
+        <div class="joystick-zone" id="joy-zone">
+            <div class="joystick-knob" id="joy-knob"></div>
+        </div>
+        <div class="action-buttons">
+            <div class="touch-btn" id="btn-whip">🐍</div>
+            <div class="touch-btn" id="btn-gun">🔫</div>
+            <div class="touch-btn" id="btn-potion">🧪</div>
+        </div>
+    </div>
+
+    <!-- Start Overlay Screen -->
+    <div id="start-screen" class="screen-overlay">
+        <h1>ARTUR: O CAÇADOR DE MÚMIAS</h1>
+        <p>Explore a Pirâmide Perdida de Anúbis em tempo real! Derrote as múmias amaldiçoadas, fuja de armadilhas e recupere o lendário Amuleto de Rá.</p>
+        <p style="font-size:0.9rem; color:#f39c12; margin-bottom: 25px;">
+            🎮 <b>Mover:</b> WASD / Setas ou Touch Joystick<br>
+            🐍 <b>Chicote:</b> Espaço / J / Botão 🐍<br>
+            🔫 <b>Pistola:</b> K / Shift / Botão 🔫<br>
+            🧪 <b>Poção:</b> L / E / Botão 🧪
+        </p>
+        <button class="btn-main" onclick="initGame()">INICIAR AVENTURA</button>
+    </div>
+
+    <!-- Game Over Screen -->
+    <div id="gameover-screen" class="screen-overlay hidden">
+        <h1 style="color:#e74c3c;">SUCUMBIU À MALDIÇÃO</h1>
+        <p id="death-reason">Artur caiu perante as trevas da pirâmide...</p>
+        <button class="btn-main" onclick="restartGame()">TENTAR NOVAMENTE</button>
+    </div>
+
+    <!-- Victory Screen -->
+    <div id="victory-screen" class="screen-overlay hidden">
+        <h1 style="color:#2ecc71;">AMULETO DE RÁ RECUPERADO!</h1>
+        <p>Parabéns! Artur derrotou o Faraó Amaldiçoado e escapou das catacumbas com todos os tesouros sagrados!</p>
+        <p id="victory-stats" style="color:#f39c12; font-weight:bold;"></p>
+        <button class="btn-main" onclick="restartGame()">JOGAR NOVAMENTE</button>
+    </div>
+</div>
+
+<script>
+const AudioEngine = {
+    ctx: null,
+    bgmOsc: null,
+    bgmGain: null,
+    isPlayingBgm: false,
+
+    init() {
+        if (!this.ctx) {
+            this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (this.ctx.state === 'suspended') {
+            this.ctx.resume();
+        }
+    },
+
+    playWhip() {
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(600, now);
+        osc.frequency.exponentialRampToValueAtTime(80, now + 0.12);
+        gain.gain.setValueAtTime(0.3, now);
+        gain.gain.linearRampToValueAtTime(0.01, now + 0.12);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.12);
+    },
+
+    playGun() {
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(900, now);
+        osc.frequency.exponentialRampToValueAtTime(30, now + 0.18);
+        gain.gain.setValueAtTime(0.4, now);
+        gain.gain.linearRampToValueAtTime(0.01, now + 0.18);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.18);
+    },
+
+    playHit() {
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(150, now);
+        osc.frequency.exponentialRampToValueAtTime(40, now + 0.15);
+        gain.gain.setValueAtTime(0.4, now);
+        gain.gain.linearRampToValueAtTime(0.01, now + 0.15);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.15);
+    },
+
+    playCoin() {
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(987.77, now);
+        osc.frequency.setValueAtTime(1318.51, now + 0.08);
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.linearRampToValueAtTime(0.01, now + 0.25);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.25);
+    },
+
+    playPotion() {
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(300, now);
+        osc.frequency.linearRampToValueAtTime(600, now + 0.25);
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.linearRampToValueAtTime(0.01, now + 0.25);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.25);
+    },
+
+    startBgm() {
+        if (!this.ctx || this.isPlayingBgm) return;
+        this.isPlayingBgm = true;
+        const notes = [110, 116.54, 130.81, 123.47, 110, 98.00]; // Phrygian Egyptian scale
+        let step = 0;
+
+        const playNextNote = () => {
+            if (!this.isPlayingBgm) return;
+            const now = this.ctx.currentTime;
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(notes[step % notes.length], now);
+
+            gain.gain.setValueAtTime(0.05, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.8);
+
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start(now);
+            osc.stop(now + 0.8);
+
+            step++;
+            setTimeout(playNextNote, 600);
+        };
+        playNextNote();
+    }
+};
+
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const minimapCanvas = document.getElementById('minimap');
+const minimapCtx = minimapCanvas.getContext('2d');
+
+const TILE_SIZE = 64;
+let mapCols = 30;
+let mapRows = 30;
+
+// Tile Types
+const T_FLOOR = 0;
+const T_WALL = 1;
+const T_CHEST = 2;
+const T_POTION = 3;
+const T_TRAP = 4;
+const T_STAIRS = 5;
+const T_AMULET = 6;
+
+let gameState = 'START';
+let currentFloor = 1;
+
+// Camera
+const camera = { x: 0, y: 0 };
+
+// Player Artur
+const player = {
+    x: 0,
+    y: 0,
+    vx: 0,
+    vy: 0,
+    radius: 18,
+    speed: 4.5,
+    hp: 100,
+    maxHp: 100,
+    torch: 100,
+    gold: 0,
+    ammo: 12,
+    potions: 2,
+    angle: 0,
+    whipCooldown: 0,
+    whipArc: 0,
+    hitFlash: 0
+};
+
+// Lists
+let map = [];
+let rooms = [];
+let enemies = [];
+let bullets = [];
+let particles = [];
+let floatingTexts = [];
+
+// Input Handling
+const keys = {};
+const touchInput = { x: 0, y: 0, active: false };
+
+function generateLevel() {
+    map = Array(mapRows).fill(null).map(() => Array(mapCols).fill(T_WALL));
+    rooms = [];
+    enemies = [];
+    bullets = [];
+    particles = [];
+
+    const numRooms = 7 + currentFloor * 2;
+    for (let r = 0; r < numRooms; r++) {
+        const w = Math.floor(Math.random() * 4) + 5;
+        const h = Math.floor(Math.random() * 4) + 5;
+        const x = Math.floor(Math.random() * (mapCols - w - 2)) + 1;
+        const y = Math.floor(Math.random() * (mapRows - h - 2)) + 1;
+
+        let overlap = false;
+        for (let other of rooms) {
+            if (x < other.x + other.w && x + w > other.x && y < other.y + other.h && y + h > other.y) {
+                overlap = true; break;
+            }
+        }
+
+        if (!overlap) {
+            for (let i = y; i < y + h; i++) {
+                for (let j = x; j < x + w; j++) {
+                    map[i][j] = T_FLOOR;
+                }
+            }
+            rooms.push({ x, y, w, h, cx: (x + w / 2) * TILE_SIZE, cy: (y + h / 2) * TILE_SIZE });
+        }
+    }
+
+    // Connect Rooms
+    for (let i = 0; i < rooms.length - 1; i++) {
+        let r1 = rooms[i];
+        let r2 = rooms[i + 1];
+        let cx1 = Math.floor(r1.cx / TILE_SIZE);
+        let cy1 = Math.floor(r1.cy / TILE_SIZE);
+        let cx2 = Math.floor(r2.cx / TILE_SIZE);
+        let cy2 = Math.floor(r2.cy / TILE_SIZE);
+
+        let currX = cx1, currY = cy1;
+        while (currX !== cx2) {
+            map[currY][currX] = T_FLOOR;
+            currX += currX < cx2 ? 1 : -1;
+        }
+        while (currY !== cy2) {
+            map[currY][currX] = T_FLOOR;
+            currY += currY < cy2 ? 1 : -1;
+        }
+    }
+
+    // Spawn Player
+    player.x = rooms[0].cx;
+    player.y = rooms[0].cy;
+    player.vx = 0; player.vy = 0;
+
+    // Populate Map Objects & Enemies
+    for (let i = 1; i < rooms.length; i++) {
+        let rm = rooms[i];
+        let rx = Math.floor(rm.x + rm.w / 2);
+        let ry = Math.floor(rm.y + rm.h / 2);
+
+        if (Math.random() < 0.6) map[rm.y + 1][rm.x + 1] = T_CHEST;
+        if (Math.random() < 0.5) map[rm.y + 1][rm.x + rm.w - 2] = T_POTION;
+        if (Math.random() < 0.4) map[ry][rx] = T_TRAP;
+
+        // Spawn Enemies
+        let isBossRoom = (currentFloor === 3 && i === rooms.length - 1);
+        let count = isBossRoom ? 1 : Math.floor(Math.random() * 3) + 1;
+
+        for (let e = 0; e < count; e++) {
+            let ex = (rm.x + 1 + Math.random() * (rm.w - 2)) * TILE_SIZE;
+            let ey = (rm.y + 1 + Math.random() * (rm.h - 2)) * TILE_SIZE;
+
+            if (isBossRoom) {
+                enemies.push(createEnemy(ex, ey, 'pharaoh'));
+            } else {
+                let type = Math.random() < 0.35 ? 'fast' : (Math.random() < 0.25 ? 'guardian' : 'normal');
+                enemies.push(createEnemy(ex, ey, type));
+            }
+        }
+    }
+
+    // Stairs or Amulet
+    let lastRoom = rooms[rooms.length - 1];
+    let lx = Math.floor(lastRoom.x + lastRoom.w / 2);
+    let ly = Math.floor(lastRoom.y + lastRoom.h / 2);
+    map[ly][lx] = (currentFloor < 3) ? T_STAIRS : T_AMULET;
+}
+
+function createEnemy(x, y, type) {
+    const stats = {
+        normal: { hp: 40, speed: 1.8, radius: 18, color: '#d1c7a5', damage: 10, name: 'Múmia' },
+        fast: { hp: 25, speed: 2.8, radius: 15, color: '#e28743', damage: 8, name: 'Múmia Veloz' },
+        guardian: { hp: 80, speed: 1.2, radius: 24, color: '#f39c12', damage: 18, name: 'Múmia Guardiã' },
+        pharaoh: { hp: 350, speed: 1.5, radius: 32, color: '#9b59b6', damage: 25, name: 'Faraó' }
+    };
+    let st = stats[type];
+    return {
+        x, y, vx: 0, vy: 0,
+        type, hp: st.hp, maxHp: st.hp,
+        speed: st.speed, radius: st.radius,
+        color: st.color, damage: st.damage,
+        hitFlash: 0, attackTimer: 0
+    };
+}
+
+function addParticle(x, y, color, vx, vy, life, size = 3) {
+    particles.push({ x, y, color, vx, vy, life, maxLife: life, size });
+}
+
+function createBloodEffect(x, y) {
+    for (let i = 0; i < 8; i++) {
+        let angle = Math.random() * Math.PI * 2;
+        let speed = Math.random() * 3 + 1;
+        addParticle(x, y, '#e74c3c', Math.cos(angle) * speed, Math.sin(angle) * speed, 20, 4);
+    }
+}
+
+function createDustEffect(x, y) {
+    for (let i = 0; i < 4; i++) {
+        let angle = Math.random() * Math.PI * 2;
+        addParticle(x, y, '#8c6239', Math.cos(angle), Math.sin(angle), 15, 2);
+    }
+}
+
+function addFloatingText(x, y, text, color = '#fff') {
+    floatingTexts.push({ x, y, text, color, life: 40, vy: -1 });
+}
+
+function isWallTile(tx, ty) {
+    if (tx < 0 || tx >= mapCols || ty < 0 || ty >= mapRows) return true;
+    if (!map || !map[ty]) return true;
+    return map[ty][tx] === T_WALL;
+}
+
+function resolveCircleWallCollision(entity) {
+    let margin = entity.radius;
+    let minTileX = Math.floor((entity.x - margin) / TILE_SIZE);
+    let maxTileX = Math.floor((entity.x + margin) / TILE_SIZE);
+    let minTileY = Math.floor((entity.y - margin) / TILE_SIZE);
+    let maxTileY = Math.floor((entity.y + margin) / TILE_SIZE);
+
+    for (let ty = minTileY; ty <= maxTileY; ty++) {
+        for (let tx = minTileX; tx <= maxTileX; tx++) {
+            if (isWallTile(tx, ty)) {
+                let nearestX = Math.max(tx * TILE_SIZE, Math.min(entity.x, (tx + 1) * TILE_SIZE));
+                let nearestY = Math.max(ty * TILE_SIZE, Math.min(entity.y, (ty + 1) * TILE_SIZE));
+                let distX = entity.x - nearestX;
+                let distY = entity.y - nearestY;
+                let distance = Math.hypot(distX, distY);
+
+                if (distance < entity.radius && distance > 0) {
+                    let overlap = entity.radius - distance;
+                    entity.x += (distX / distance) * overlap;
+                    entity.y += (distY / distance) * overlap;
+                }
+            }
+        }
+    }
+}
+
+function performWhip() {
+    if (player.whipCooldown > 0) return;
+    player.whipCooldown = 22; // frames
+    player.whipArc = Math.PI * 0.8;
+    AudioEngine.playWhip();
+
+    let whipRange = 85;
+    enemies.forEach(e => {
+        let dx = e.x - player.x;
+        let dy = e.y - player.y;
+        let dist = Math.hypot(dx, dy);
+        let angleToEnemy = Math.atan2(dy, dx);
+        let angleDiff = Math.abs(angleToEnemy - player.angle);
+
+        if (angleDiff > Math.PI) angleDiff = Math.PI * 2 - angleDiff;
+
+        if (dist <= whipRange + e.radius && angleDiff <= Math.PI / 2) {
+            e.hp -= 25;
+            e.hitFlash = 10;
+            e.vx += Math.cos(angleToEnemy) * 6; // Knockback
+            e.vy += Math.sin(angleToEnemy) * 6;
+            AudioEngine.playHit();
+            createBloodEffect(e.x, e.y);
+            addFloatingText(e.x, e.y - 15, '-25', '#ff4d4d');
+        }
+    });
+}
+
+function performGun() {
+    if (player.ammo <= 0) {
+        addFloatingText(player.x, player.y - 20, 'Sem Munição!', '#ff3333');
+        return;
+    }
+    player.ammo--;
+    AudioEngine.playGun();
+
+    let speed = 14;
+    bullets.push({
+        x: player.x + Math.cos(player.angle) * 20,
+        y: player.y + Math.sin(player.angle) * 20,
+        vx: Math.cos(player.angle) * speed,
+        vy: Math.sin(player.angle) * speed,
+        life: 60
+    });
+
+    // Muzzle spark
+    for (let i = 0; i < 5; i++) {
+        addParticle(player.x + Math.cos(player.angle) * 20, player.y + Math.sin(player.angle) * 20, '#f39c12', (Math.random() - 0.5) * 4, (Math.random() - 0.5) * 4, 10, 4);
+    }
+    updateHUD();
+}
+
+function drinkPotion() {
+    if (player.potions <= 0) {
+        addFloatingText(player.x, player.y - 20, 'Sem Poções!', '#ff3333');
+        return;
+    }
+    if (player.hp >= player.maxHp) return;
+
+    player.potions--;
+    player.hp = Math.min(player.maxHp, player.hp + 45);
+    AudioEngine.playPotion();
+    addFloatingText(player.x, player.y - 20, '+45 HP', '#2ecc71');
+    updateHUD();
+}
+
+function update() {
+    if (gameState !== 'PLAYING') return;
+
+    // Torch drainage
+    player.torch = Math.max(0, player.torch - 0.015);
+
+    // Player Direction vector calculation
+    let inputX = 0, inputY = 0;
+    if (keys['w'] || keys['W'] || keys['ArrowUp']) inputY -= 1;
+    if (keys['s'] || keys['S'] || keys['ArrowDown']) inputY += 1;
+    if (keys['a'] || keys['A'] || keys['ArrowLeft']) inputX -= 1;
+    if (keys['d'] || keys['D'] || keys['ArrowRight']) inputX += 1;
+
+    if (touchInput.active) {
+        inputX = touchInput.x;
+        inputY = touchInput.y;
+    }
+
+    if (inputX !== 0 || inputY !== 0) {
+        let len = Math.hypot(inputX, inputY);
+        inputX /= len; inputY /= len;
+        player.vx += inputX * 0.8;
+        player.vy += inputY * 0.8;
+        player.angle = Math.atan2(inputY, inputX);
+
+        if (Math.random() < 0.2) createDustEffect(player.x, player.y + 10);
+    }
+
+    // Apply Friction
+    player.vx *= 0.82;
+    player.vy *= 0.82;
+
+    player.x += player.vx;
+    player.y += player.vy;
+
+    resolveCircleWallCollision(player);
+
+    // Handle Whip Cooldown
+    if (player.whipCooldown > 0) player.whipCooldown--;
+
+    // Tile Interaction Check
+    let ptx = Math.floor(player.x / TILE_SIZE);
+    let pty = Math.floor(player.y / TILE_SIZE);
+    let currentTile = map[pty] ? map[pty][ptx] : T_FLOOR;
+
+    if (currentTile === T_CHEST) {
+        map[pty][ptx] = T_FLOOR;
+        let gold = Math.floor(Math.random() * 35) + 25;
+        player.gold += gold;
+        player.ammo += 3;
+        AudioEngine.playCoin();
+        addFloatingText(player.x, player.y - 20, `+${gold} Ouro!`, '#f1c40f');
+        updateHUD();
+    } else if (currentTile === T_POTION) {
+        map[pty][ptx] = T_FLOOR;
+        player.potions++;
+        AudioEngine.playPotion();
+        addFloatingText(player.x, player.y - 20, '+1 Poção', '#2ecc71');
+        updateHUD();
+    } else if (currentTile === T_TRAP) {
+        player.hp -= 0.5; // continuous damage
+        if (Math.random() < 0.1) AudioEngine.playHit();
+        addFloatingText(player.x, player.y - 20, 'Espinhos!', '#e74c3c');
+        if (player.hp <= 0) triggerGameOver('Artur foi empalado por armadilhas antigas.');
+        updateHUD();
+    } else if (currentTile === T_STAIRS) {
+        currentFloor++;
+        generateLevel();
+        addFloatingText(player.x, player.y - 20, `Andar ${currentFloor}`, '#f39c12');
+        updateHUD();
+        return;
+    } else if (currentTile === T_AMULET) {
+        triggerVictory();
+        return;
+    }
+
+    // Update Bullets
+    bullets.forEach((b, idx) => {
+        b.x += b.vx;
+        b.y += b.vy;
+        b.life--;
+
+        // Check Wall Hit
+        let btx = Math.floor(b.x / TILE_SIZE);
+        let bty = Math.floor(b.y / TILE_SIZE);
+        if (isWallTile(btx, bty) || b.life <= 0) {
+            bullets.splice(idx, 1);
+            return;
+        }
+
+        // Check Enemy Hit
+        enemies.forEach(e => {
+            let dist = Math.hypot(e.x - b.x, e.y - b.y);
+            if (dist < e.radius + 6) {
+                e.hp -= 35;
+                e.hitFlash = 10;
+                e.vx += b.vx * 0.2;
+                e.vy += b.vy * 0.2;
+                bullets.splice(idx, 1);
+                AudioEngine.playHit();
+                createBloodEffect(e.x, e.y);
+                addFloatingText(e.x, e.y - 15, '-35', '#ff3333');
+            }
+        });
+    });
+
+    // Update Enemies AI
+    enemies.forEach((e, idx) => {
+        let dx = player.x - e.x;
+        let dy = player.y - e.y;
+        let dist = Math.hypot(dx, dy);
+
+        // Chase Player
+        if (dist < 380) {
+            e.vx += (dx / dist) * 0.3;
+            e.vy += (dy / dist) * 0.3;
+        }
+
+        e.vx *= 0.85;
+        e.vy *= 0.85;
+        e.x += e.vx;
+        e.y += e.vy;
+
+        resolveCircleWallCollision(e);
+
+        if (e.hitFlash > 0) e.hitFlash--;
+
+        // Attack Player
+        if (dist < e.radius + player.radius) {
+            player.hp -= e.damage * 0.05;
+            player.hitFlash = 5;
+            if (Math.random() < 0.08) AudioEngine.playHit();
+            if (player.hp <= 0) triggerGameOver('Artur foi sobrecarregado pelas múmias.');
+            updateHUD();
+        }
+
+        // Death Check
+        if (e.hp <= 0) {
+            createBloodEffect(e.x, e.y);
+            player.gold += 15;
+            AudioEngine.playCoin();
+            addFloatingText(e.x, e.y, '+15 Ouro', '#f39c12');
+            enemies.splice(idx, 1);
+            updateHUD();
+        }
+    });
+
+    // Update Particles
+    particles.forEach((p, idx) => {
+        p.x += p.vx; p.y += p.vy;
+        p.life--;
+        if (p.life <= 0) particles.splice(idx, 1);
+    });
+
+    // Update Floating Text
+    floatingTexts.forEach((ft, idx) => {
+        ft.y += ft.vy;
+        ft.life--;
+        if (ft.life <= 0) floatingTexts.splice(idx, 1);
+    });
+
+    // Smooth LERP Camera Follow
+    camera.x += (player.x - canvas.width / 2 - camera.x) * 0.1;
+    camera.y += (player.y - canvas.height / 2 - camera.y) * 0.1;
+}
+
+function render() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (!map || map.length === 0) return;
+
+    ctx.save();
+    ctx.translate(-camera.x, -camera.y);
+
+    // Draw Map
+    let startCol = Math.max(0, Math.floor(camera.x / TILE_SIZE));
+    let endCol = Math.min(mapCols, Math.ceil((camera.x + canvas.width) / TILE_SIZE));
+    let startRow = Math.max(0, Math.floor(camera.y / TILE_SIZE));
+    let endRow = Math.min(mapRows, Math.ceil((camera.y + canvas.height) / TILE_SIZE));
+
+    for (let r = startRow; r < endRow; r++) {
+        for (let c = startCol; c < endCol; c++) {
+            let px = c * TILE_SIZE;
+            let py = r * TILE_SIZE;
+            let tile = map[r][c];
+
+            if (tile === T_WALL) {
+                ctx.fillStyle = '#2d1c10';
+                ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
+                ctx.strokeStyle = '#180f08';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(px, py, TILE_SIZE, TILE_SIZE);
+            } else {
+                ctx.fillStyle = '#543920';
+                ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
+                ctx.strokeStyle = '#422c18';
+                ctx.strokeRect(px, py, TILE_SIZE, TILE_SIZE);
+
+                ctx.font = '24px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                if (tile === T_CHEST) ctx.fillText('📦', px + 32, py + 32);
+                else if (tile === T_POTION) ctx.fillText('🧪', px + 32, py + 32);
+                else if (tile === T_TRAP) ctx.fillText('⚙️', px + 32, py + 32);
+                else if (tile === T_STAIRS) ctx.fillText('📐', px + 32, py + 32);
+                else if (tile === T_AMULET) ctx.fillText('🏺', px + 32, py + 32);
+            }
+        }
+    }
+
+    // Draw Bullets
+    ctx.fillStyle = '#ffcc00';
+    bullets.forEach(b => {
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, 4, 0, Math.PI * 2);
+        ctx.fill();
+    });
+
+    // Draw Enemies
+    enemies.forEach(e => {
+        ctx.save();
+        ctx.translate(e.x, e.y);
+
+        ctx.fillStyle = e.hitFlash > 0 ? '#ffffff' : e.color;
+        ctx.beginPath();
+        ctx.arc(0, 0, e.radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#000';
+        ctx.stroke();
+
+        // Eyes
+        ctx.fillStyle = '#e74c3c';
+        ctx.beginPath();
+        ctx.arc(-4, -4, 3, 0, Math.PI * 2);
+        ctx.arc(4, -4, 3, 0, Math.PI * 2);
+        ctx.fill();
+
+        // HP Bar
+        if (e.hp < e.maxHp) {
+            ctx.fillStyle = '#c0392b';
+            ctx.fillRect(-20, -e.radius - 10, 40, 5);
+            ctx.fillStyle = '#2ecc71';
+            ctx.fillRect(-20, -e.radius - 10, (e.hp / e.maxHp) * 40, 5);
+        }
+
+        ctx.restore();
+    });
+
+    // Draw Artur
+    ctx.save();
+    ctx.translate(player.x, player.y);
+    ctx.rotate(player.angle);
+
+    ctx.fillStyle = player.hitFlash > 0 ? '#ff0000' : '#d2b48c';
+    ctx.beginPath();
+    ctx.arc(0, 0, player.radius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#4a2e13';
+    ctx.lineWidth = 3;
+    ctx.stroke();
+
+    // Hat & Gun/Hand
+    ctx.fillStyle = '#5c3a19';
+    ctx.fillRect(-8, -12, 16, 24);
+
+    ctx.restore();
+
+    // Whip Effect Arc
+    if (player.whipCooldown > 12) {
+        ctx.save();
+        ctx.translate(player.x, player.y);
+        ctx.rotate(player.angle);
+        ctx.strokeStyle = '#f39c12';
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.arc(0, 0, 75, -player.whipArc / 2, player.whipArc / 2);
+        ctx.stroke();
+        ctx.restore();
+    }
+
+    // Draw Particles
+    particles.forEach(p => {
+        ctx.fillStyle = p.color;
+        ctx.fillRect(p.x, p.y, p.size, p.size);
+    });
+
+    // Draw Floating Texts
+    ctx.font = 'bold 16px sans-serif';
+    ctx.textAlign = 'center';
+    floatingTexts.forEach(ft => {
+        ctx.fillStyle = ft.color;
+        ctx.fillText(ft.text, ft.x, ft.y);
+    });
+
+    ctx.restore();
+
+    // --- Dynamic Torch Lighting Overlay ---
+    ctx.save();
+    let screenPlayerX = player.x - camera.x;
+    let screenPlayerY = player.y - camera.y;
+
+    let torchRadius = Math.max(80, (player.torch / 100) * 320) + (Math.random() * 8 - 4); // Flicker effect
+
+    let grad = ctx.createRadialGradient(
+        screenPlayerX, screenPlayerY, 30,
+        screenPlayerX, screenPlayerY, torchRadius
+    );
+    grad.addColorStop(0, 'rgba(0, 0, 0, 0)');
+    grad.addColorStop(0.7, 'rgba(10, 5, 2, 0.6)');
+    grad.addColorStop(1, 'rgba(5, 2, 1, 0.98)');
+
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.restore();
+
+    renderMinimap();
+}
+
+function renderMinimap() {
+    if (!map || map.length === 0) return;
+    minimapCtx.clearRect(0, 0, 100, 100);
+    let scaleX = 100 / mapCols;
+    let scaleY = 100 / mapRows;
+
+    for (let r = 0; r < mapRows; r++) {
+        for (let c = 0; c < mapCols; c++) {
+            if (map[r][c] !== T_WALL) {
+                minimapCtx.fillStyle = '#543920';
+                minimapCtx.fillRect(c * scaleX, r * scaleY, scaleX, scaleY);
+            }
+        }
+    }
+
+    // Draw Player on Minimap
+    minimapCtx.fillStyle = '#2ecc71';
+    minimapCtx.fillRect((player.x / TILE_SIZE) * scaleX - 2, (player.y / TILE_SIZE) * scaleY - 2, 4, 4);
+}
+
+function updateHUD() {
+    document.getElementById('hp-fill').style.width = `${Math.max(0, (player.hp / player.maxHp) * 100)}%`;
+    document.getElementById('torch-fill').style.width = `${Math.max(0, player.torch)}%`;
+    document.getElementById('gold-txt').textContent = player.gold;
+    document.getElementById('ammo-txt').textContent = player.ammo;
+    document.getElementById('potion-txt').textContent = player.potions;
+}
+
+function triggerGameOver(reason) {
+    gameState = 'GAMEOVER';
+    document.getElementById('death-reason').textContent = reason;
+    document.getElementById('gameover-screen').classList.remove('hidden');
+}
+
+function triggerVictory() {
+    gameState = 'VICTORY';
+    document.getElementById('victory-stats').textContent = `Tesouro Total: ${player.gold} Ouro!`;
+    document.getElementById('victory-screen').classList.remove('hidden');
+}
+
+function resizeCanvas() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+}
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+
+// Keyboard Listeners
+window.addEventListener('keydown', e => {
+    keys[e.key] = true;
+    if (e.key === ' ' || e.key.toLowerCase() === 'j') performWhip();
+    if (e.key.toLowerCase() === 'k' || e.key === 'Shift') performGun();
+    if (e.key.toLowerCase() === 'l' || e.key.toLowerCase() === 'e') drinkPotion();
+});
+
+window.addEventListener('keyup', e => { keys[e.key] = false; });
+
+// Touch Control Handlers
+const joyZone = document.getElementById('joy-zone');
+const joyKnob = document.getElementById('joy-knob');
+
+joyZone.addEventListener('touchstart', handleJoyMove);
+joyZone.addEventListener('touchmove', handleJoyMove);
+joyZone.addEventListener('touchend', () => {
+    touchInput.active = false;
+    joyKnob.style.transform = `translate(-50%, -50%)`;
+});
+
+function handleJoyMove(e) {
+    e.preventDefault();
+    let touch = e.touches[0];
+    let rect = joyZone.getBoundingClientRect();
+    let cx = rect.left + rect.width / 2;
+    let cy = rect.top + rect.height / 2;
+
+    let dx = touch.clientX - cx;
+    let dy = touch.clientY - cy;
+    let dist = Math.hypot(dx, dy);
+    let maxR = rect.width / 2;
+
+    if (dist > maxR) {
+        dx = (dx / dist) * maxR;
+        dy = (dy / dist) * maxR;
+    }
+
+    touchInput.x = dx / maxR;
+    touchInput.y = dy / maxR;
+    touchInput.active = true;
+
+    joyKnob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+}
+
+document.getElementById('btn-whip').addEventListener('touchstart', (e) => { e.preventDefault(); performWhip(); });
+document.getElementById('btn-gun').addEventListener('touchstart', (e) => { e.preventDefault(); performGun(); });
+document.getElementById('btn-potion').addEventListener('touchstart', (e) => { e.preventDefault(); drinkPotion(); });
+
+function initGame() {
+    AudioEngine.init();
+    AudioEngine.startBgm();
+    document.getElementById('start-screen').classList.add('hidden');
+    gameState = 'PLAYING';
+    currentFloor = 1;
+    player.hp = 100;
+    player.torch = 100;
+    player.gold = 0;
+    player.ammo = 12;
+    player.potions = 2;
+    generateLevel();
+    updateHUD();
+}
+
+function restartGame() {
+    document.getElementById('gameover-screen').classList.add('hidden');
+    document.getElementById('victory-screen').classList.add('hidden');
+    initGame();
+}
+
+// 60 FPS Game Loop
+function gameLoop() {
+    update();
+    render();
+    requestAnimationFrame(gameLoop);
+}
+requestAnimationFrame(gameLoop);
+</script>
+</body>
+</html>
